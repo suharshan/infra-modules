@@ -19,42 +19,6 @@ resource "aws_iam_role" "ecs_task_execution" {
 
 }
 
-# module "service_container_definition" {
-#   source  = "cloudposse/ecs-container-definition/aws"
-#   version = "v0.40.0"
-
-#   container_name  = var.name
-#   container_image = var.image
-
-#   container_cpu                = var.ecs_task_cpu
-#   container_memory             = var.ecs_task_memory
-#   container_memory_reservation = var.container_memory_reservation
-
-#   user                     = var.user
-#   ulimits                  = var.ulimits
-#   entrypoint               = var.entrypoint
-#   command                  = var.command
-#   working_directory        = var.working_directory
-
-#   port_mappings = [
-#     {
-#       containerPort = var.port
-#       hostPort      = var.port
-#       protocol      = "tcp"
-#     },
-#   ]
-
-#   log_configuration = {
-#     logDriver = "awslogs"
-#     options = {
-#       awslogs-region        = data.aws_region.current.name
-#       awslogs-group         = aws_cloudwatch_log_group.this.name
-#       awslogs-stream-prefix = "ecs"
-#     }
-#     secretOptions = []
-#   }
-# }
-
 resource "aws_ecs_task_definition" "service" {
   family                = var.name
   network_mode = "awsvpc"
@@ -68,6 +32,7 @@ resource "aws_ecs_task_definition" "service" {
   [
     {
       "name": "${var.container_name}",
+      "executionRoleArn": null,
       "image": "nginx:1.17.7-alpine",
       "cpu": 256,
       "memory": 512,
@@ -93,7 +58,6 @@ module "ecs_sg" {
   version = "v3.16.0"
 
   name        = "${var.name}-service-${var.environment}"
-  # vpc_id      = local.vpc_id
   vpc_id = var.vpc_id
   description = "Security group with open port for ${var.name} (${var.container_port}) from ALB, egress ports are all world open"
 
@@ -104,7 +68,6 @@ module "ecs_sg" {
       protocol                 = "tcp"
       description              = var.name
       source_security_group_id = var.alb_security_group_id
-      # source_security_group_id = local.alb_security_group_id
     },
   ]
 
@@ -134,21 +97,6 @@ resource "aws_ecs_service" "this" {
     target_group_arn = var.target_group_arn
   }
 }
-
-# module "ecr" {
-#   source = "../../ecr"
-
-#   ecr_name = var.name
-# }
-
-
-# resource "aws_ecr_repository" "this" {
-#   name                 = var.name
-
-#   image_scanning_configuration {
-#     scan_on_push = true
-#   }
-# }
 
 resource "aws_cloudwatch_log_group" "this" {
   name              = var.name
